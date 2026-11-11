@@ -39,12 +39,23 @@ h1 { margin-top: 0; }
 
 #task-form { padding: 1rem; }
 
-input[type="text"], textarea {
+input[type="text"], input[type="date"], textarea {
   font: inherit;
   padding: .5rem .6rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   width: 100%;
+}
+
+input[type="date"] { width: auto; max-width: 100%; }
+
+.due-field {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: .9rem;
 }
 
 button {
@@ -101,6 +112,9 @@ input[type="search"], select {
 .task .content { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .task .description { margin: .25rem 0 0; color: var(--muted); white-space: pre-wrap; }
 .task .description:empty { display: none; }
+.task .due { margin: .25rem 0 0; font-size: .9rem; color: var(--muted); }
+.task.overdue { border-color: var(--danger); }
+.task.overdue .due { color: var(--danger); font-weight: 700; }
 .task.completed .title { text-decoration: line-through; color: var(--muted); }
 .task .actions { display: flex; gap: .25rem; flex-shrink: 0; }
 

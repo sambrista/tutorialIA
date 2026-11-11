@@ -5,6 +5,17 @@ const express = require('express');
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 2000;
 
+/** Comprueba que `s` es una fecha real con formato AAAA-MM-DD. */
+function isCalendarDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (y < 1) return false;
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  date.setUTCFullYear(y); // Date.UTC trata los años 0-99 como 1900-1999
+  return date.getUTCFullYear() === y && date.getUTCMonth() === mo - 1 && date.getUTCDate() === d;
+}
+
 /**
  * Valida el cuerpo de una petición. Con `partial` los campos son opcionales.
  * Devuelve { errors, data } con los campos normalizados.
@@ -42,6 +53,16 @@ function validate(body, { partial = false } = {}) {
     }
   }
 
+  if (body.dueDate !== undefined) {
+    if (body.dueDate === null) {
+      data.dueDate = null;
+    } else if (typeof body.dueDate !== 'string' || !isCalendarDate(body.dueDate)) {
+      errors.push('La fecha límite debe ser una fecha válida con formato AAAA-MM-DD o null.');
+    } else {
+      data.dueDate = body.dueDate;
+    }
+  }
+
   if (partial && errors.length === 0 && Object.keys(data).length === 0) {
     errors.push('No se ha indicado ningún campo a modificar.');
   }
@@ -50,7 +71,7 @@ function validate(body, { partial = false } = {}) {
 }
 
 const STATUSES = ['all', 'pending', 'completed'];
-const SORTS = ['created_desc', 'created_asc'];
+const SORTS = ['created_desc', 'created_asc', 'due_asc'];
 
 /** Valida los parámetros de consulta de GET /. Devuelve { errors, options }. */
 function validateQuery(query) {

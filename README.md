@@ -30,8 +30,8 @@ Variables de entorno opcionales:
 |--------|-----------------------------|------------------------------------------|
 | GET    | `/api/tasks`                | Lista las tareas (ver parámetros abajo)  |
 | GET    | `/api/tasks/:id`            | Obtiene una tarea                        |
-| POST   | `/api/tasks`                | Crea una tarea `{ title, description? }` |
-| PUT    | `/api/tasks/:id`            | Edita `title`, `description`, `completed`|
+| POST   | `/api/tasks`                | Crea una tarea `{ title, description?, dueDate? }` |
+| PUT    | `/api/tasks/:id`            | Edita `title`, `description`, `completed`, `dueDate` |
 | PATCH  | `/api/tasks/:id/toggle`     | Alterna el estado de completada          |
 | DELETE | `/api/tasks/:id`            | Elimina una tarea                        |
 
@@ -39,8 +39,13 @@ Parámetros opcionales de `GET /api/tasks` (combinables):
 
 - `status`: `all` (por defecto), `pending` o `completed`.
 - `q`: texto a buscar en título y descripción (sin distinguir mayúsculas, máx. 200).
-- `sort`: `created_desc` o `created_asc`, por fecha de creación. Sin `sort` las
+- `sort`: `created_desc` o `created_asc`, por fecha de creación, o `due_asc`, por
+  fecha límite ascendente (las tareas sin fecha van al final). Sin `sort` las
   pendientes van primero y luego por `id DESC`.
+
+`dueDate` (fecha límite) es una cadena `AAAA-MM-DD` (fecha real de calendario) o
+`null`. En `POST` es opcional; en `PUT`, si se omite se conserva el valor actual y
+`null` la borra.
 
 Los errores de validación devuelven `400 { errors: [...] }` y los recursos
 inexistentes `404 { error }`.

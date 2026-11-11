@@ -139,6 +139,7 @@ describe('API /api/tasks', () => {
     const res = await request(app).get('/');
     assert.equal(res.status, 200);
     assert.match(res.text, /Gestor de tareas/);
+    assert.match(res.text, /type="date"/);
   });
 
   test('devuelve 404 JSON para rutas de API desconocidas', async () => {
@@ -189,6 +190,140 @@ describe('API /api/tasks', () => {
         assert.equal(res.status, 400, qs);
         assert.ok(res.body.errors.length > 0);
       }
+    });
+  });
+
+  describe('fecha límite (dueDate)', () => {
+    const get = (qs = '') => request(app).get(`/api/tasks${qs}`);
+    const titles = (res) => res.body.map((t) => t.title);
+
+    test('POST acepta una fecha válida, su ausencia o null', async () => {
+      const withDate = await create({ title: 'A', dueDate: '2026-05-01' });
+      assert.equal(withDate.status, 201);
+      assert.equal(withDate.body.dueDate, '2026-05-01');
+      const without = await create({ title: 'B' });
+      assert.equal(without.status, 201);
+      assert.equal(without.body.dueDate, null);
+      const nul = await create({ title: 'C', dueDate: null });
+      assert.equal(nul.status, 201);
+      assert.equal(nul.body.dueDate, null);
+    });
+
+    test('POST rechaza fechas inválidas con 400 y errors', async () => {
+      const invalid = [
+        '2026-02-30', '2026-13-01', '2026-5-1', '01/05/2026', '',
+        '2026-05-01T10:00:00Z', ' 2026-05-01', 20260501, true, {}, [], '0000-01-01', '2026-02-29',
+      ];
+      for (const dueDate of invalid) {
+        const res = await create({ title: 'X', dueDate });
+        assert.equal(res.status, 400, JSON.stringify(dueDate));
+        assert.ok(res.body.errors.length > 0, JSON.stringify(dueDate));
+      }
+      assert.deepEqual((await get()).body, []);
+    });
+
+    test('POST acepta el 29 de febrero de un año bisiesto', async () => {
+      const res = await create({ title: 'Bisiesto', dueDate: '2024-02-29' });
+      assert.equal(res.status, 201);
+      assert.equal(res.body.dueDate, '2024-02-29');
+    });
+
+    test('POST y PUT gestionan fechas de los años 0001-0099', async () => {
+      const leap = await create({ title: 'Bisiesto 4', dueDate: '0004-02-29' });
+      assert.equal(leap.status, 201);
+      assert.equal(leap.body.dueDate, '0004-02-29');
+      const first = await create({ title: 'Año 1', dueDate: '0001-01-01' });
+      assert.equal(first.status, 201);
+      assert.equal(first.body.dueDate, '0001-01-01');
+
+      for (const dueDate of ['0050-02-29', '0000-01-01']) {
+        const res = await create({ title: 'X', dueDate });
+        assert.equal(res.status, 400, dueDate);
+        assert.ok(res.body.errors.length > 0, dueDate);
+      }
+
+      const { body } = await create({ title: 'Para PUT' });
+      const ok = await request(app).put(`/api/tasks/${body.id}`).send({ dueDate: '0004-02-29' });
+      assert.equal(ok.status, 200);
+      assert.equal(ok.body.dueDate, '0004-02-29');
+      for (const dueDate of ['0050-02-29', '0000-01-01']) {
+        const res = await request(app).put(`/api/tasks/${body.id}`).send({ dueDate });
+        assert.equal(res.status, 400, dueDate);
+        assert.ok(res.body.errors.length > 0, dueDate);
+      }
+      assert.equal((await request(app).get(`/api/tasks/${body.id}`)).body.dueDate, '0004-02-29');
+    });
+
+    test('PUT cambia la fecha conservando el resto de campos', async () => {
+      const { body } = await create({ title: 'A', description: 'd' });
+      const res = await request(app).put(`/api/tasks/${body.id}`).send({ dueDate: '2026-06-01' });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.dueDate, '2026-06-01');
+      assert.equal(res.body.title, 'A');
+      assert.equal(res.body.description, 'd');
+    });
+
+    test('PUT con null borra la fecha', async () => {
+      const { body } = await create({ title: 'A', dueDate: '2026-05-01' });
+      const res = await request(app).put(`/api/tasks/${body.id}`).send({ dueDate: null });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.dueDate, null);
+      assert.equal(res.body.title, 'A');
+    });
+
+    test('PUT sin dueDate conserva la fecha', async () => {
+      const { body } = await create({ title: 'A', dueDate: '2026-05-01' });
+      const res = await request(app).put(`/api/tasks/${body.id}`).send({ title: 'B' });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.title, 'B');
+      assert.equal(res.body.dueDate, '2026-05-01');
+    });
+
+    test('PUT rechaza una fecha inválida y mantiene la anterior; {} sigue siendo 400', async () => {
+      const { body } = await create({ title: 'A', dueDate: '2026-05-01' });
+      for (const dueDate of ['2026-02-30', '', 20260501, '2026-05-01T10:00:00Z']) {
+        const res = await request(app).put(`/api/tasks/${body.id}`).send({ dueDate });
+        assert.equal(res.status, 400, JSON.stringify(dueDate));
+        assert.ok(res.body.errors.length > 0);
+      }
+      assert.equal((await request(app).put(`/api/tasks/${body.id}`).send({})).status, 400);
+      assert.equal((await request(app).get(`/api/tasks/${body.id}`)).body.dueDate, '2026-05-01');
+    });
+
+    test('PATCH toggle conserva la fecha', async () => {
+      const { body } = await create({ title: 'A', dueDate: '2026-05-01' });
+      const first = await request(app).patch(`/api/tasks/${body.id}/toggle`);
+      assert.equal(first.body.completed, true);
+      assert.equal(first.body.dueDate, '2026-05-01');
+      const second = await request(app).patch(`/api/tasks/${body.id}/toggle`);
+      assert.equal(second.body.dueDate, '2026-05-01');
+    });
+
+    test('GET sort=due_asc ordena por fecha con las tareas sin fecha al final', async () => {
+      await create({ title: 'A', dueDate: '2026-03-01' });
+      await create({ title: 'B' });
+      await create({ title: 'C', dueDate: '2026-01-01' });
+      await create({ title: 'D', dueDate: '2026-03-01' });
+      const res = await get('?sort=due_asc');
+      assert.equal(res.status, 200);
+      assert.deepEqual(titles(res), ['C', 'D', 'A', 'B']);
+    });
+
+    test('GET sort=due_desc es inválido (400)', async () => {
+      const res = await get('?sort=due_desc');
+      assert.equal(res.status, 400);
+      assert.ok(res.body.errors.length > 0);
+    });
+
+    test('GET sort=due_asc se combina con status y q', async () => {
+      await create({ title: 'Pan tarde', dueDate: '2026-05-01' });
+      await create({ title: 'Pan pronto', dueDate: '2026-02-01' });
+      await create({ title: 'Leche', dueDate: '2026-01-01' });
+      const hecho = await create({ title: 'Pan hecho', dueDate: '2026-01-15' });
+      await request(app).patch(`/api/tasks/${hecho.body.id}/toggle`);
+      assert.deepEqual(titles(await get('?sort=due_asc&status=pending')), ['Leche', 'Pan pronto', 'Pan tarde']);
+      assert.deepEqual(titles(await get('?sort=due_asc&status=pending&q=pan')), ['Pan pronto', 'Pan tarde']);
+      assert.deepEqual(titles(await get('?sort=due_asc&q=pan')), ['Pan hecho', 'Pan pronto', 'Pan tarde']);
     });
   });
 });
