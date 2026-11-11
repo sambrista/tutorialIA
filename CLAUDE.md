@@ -66,8 +66,11 @@ node --test --test-name-pattern="alterna" "tests/**/*.test.js"   # tests por nom
   `prepare()`. No hay sistema de migraciones (`CREATE TABLE IF NOT EXISTS`).
 - **`store.update(id, changes)`** fusiona cambios parciales sobre la tarea actual;
   lo usan tanto `PUT /:id` como `PATCH /:id/toggle`.
-- **Orden de la lista:** pendientes primero y luego por `id DESC`. Los tests
-  dependen de este orden.
+- **Orden de la lista:** sin `sort`, pendientes primero y luego por `id DESC`; los
+  tests dependen de este orden. `store.list({ status, q, sort })` aplica filtro
+  por estado, búsqueda (título y descripción, `LIKE` con comodines escapados) y
+  orden por fecha (`created_asc`/`created_desc`, sin agrupar por estado). La ruta
+  valida estos parámetros en `validateQuery()` (400 si son inválidos).
 - **Validación:** `validate(body, { partial })` en `src/routes/tasks.js` (modo
   `partial` para `PUT`). Recorta espacios y aplica límites de 200 (título) y
   2000 (descripción) caracteres, replicados en los `maxlength` de
@@ -75,5 +78,6 @@ node --test --test-name-pattern="alterna" "tests/**/*.test.js"   # tests por nom
 - **Formato de errores:** 400 → `{ errors: [...] }`; 404/500 → `{ error }`. El
   helper `request()` de `public/app.js` entiende ambas formas.
 - **Frontend:** tras cada operación recarga la lista completa (`load()`) y
-  vuelve a renderizar; el estado local (`tasks`, `filter`) solo se usa para pintar.
+  vuelve a renderizar; el estado local (`tasks`, `filter`, `search`, `sort`) solo se usa para pintar y
+  se envía como parámetros a la API (el filtrado lo hace el servidor).
   Usa `form.elements.<campo>` (no `form.title`, que choca con la propiedad nativa).

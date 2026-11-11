@@ -146,4 +146,49 @@ describe('API /api/tasks', () => {
     assert.equal(res.status, 404);
     assert.ok(res.body.error);
   });
+
+  describe('GET /api/tasks con parámetros', () => {
+    beforeEach(async () => {
+      await create({ title: 'Comprar pan', description: 'Panadería' });
+      await create({ title: 'Estudiar Node' });
+      await create({ title: 'Llamar al banco' });
+      await request(app).patch('/api/tasks/1/toggle');
+    });
+
+    const get = (qs) => request(app).get(`/api/tasks${qs}`);
+    const titles = (res) => res.body.map((t) => t.title);
+
+    test('filtra por estado', async () => {
+      assert.deepEqual(titles(await get('?status=completed')), ['Comprar pan']);
+      assert.deepEqual(titles(await get('?status=pending')), ['Llamar al banco', 'Estudiar Node']);
+    });
+
+    test('busca por texto', async () => {
+      assert.deepEqual(titles(await get('?q=pan')), ['Comprar pan']);
+      assert.deepEqual(titles(await get('?q=%25')), []);
+    });
+
+    test('busca sin distinguir mayúsculas con acentos', async () => {
+      await create({ title: 'Árbol Ñandú' });
+      assert.deepEqual(titles(await get('?q=%C3%A1rbol')), ['Árbol Ñandú']);
+      assert.deepEqual(titles(await get('?q=%C3%B1and%C3%BA')), ['Árbol Ñandú']);
+    });
+
+    test('ordena por fecha de creación', async () => {
+      assert.deepEqual(titles(await get('?sort=created_asc')), ['Comprar pan', 'Estudiar Node', 'Llamar al banco']);
+      assert.deepEqual(titles(await get('?sort=created_desc')), ['Llamar al banco', 'Estudiar Node', 'Comprar pan']);
+    });
+
+    test('combina parámetros', async () => {
+      assert.deepEqual(titles(await get('?status=pending&q=node&sort=created_asc')), ['Estudiar Node']);
+    });
+
+    test('rechaza parámetros inválidos con 400', async () => {
+      for (const qs of ['?status=x', '?sort=x', `?q=${'x'.repeat(201)}`, '?q=a&q=b']) {
+        const res = await get(qs);
+        assert.equal(res.status, 400, qs);
+        assert.ok(res.body.errors.length > 0);
+      }
+    });
+  });
 });

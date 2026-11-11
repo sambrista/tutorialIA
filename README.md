@@ -28,12 +28,19 @@ Variables de entorno opcionales:
 
 | Método | Ruta                        | Descripción                              |
 |--------|-----------------------------|------------------------------------------|
-| GET    | `/api/tasks`                | Lista las tareas (pendientes primero)    |
+| GET    | `/api/tasks`                | Lista las tareas (ver parámetros abajo)  |
 | GET    | `/api/tasks/:id`            | Obtiene una tarea                        |
 | POST   | `/api/tasks`                | Crea una tarea `{ title, description? }` |
 | PUT    | `/api/tasks/:id`            | Edita `title`, `description`, `completed`|
 | PATCH  | `/api/tasks/:id/toggle`     | Alterna el estado de completada          |
 | DELETE | `/api/tasks/:id`            | Elimina una tarea                        |
+
+Parámetros opcionales de `GET /api/tasks` (combinables):
+
+- `status`: `all` (por defecto), `pending` o `completed`.
+- `q`: texto a buscar en título y descripción (sin distinguir mayúsculas, máx. 200).
+- `sort`: `created_desc` o `created_asc`, por fecha de creación. Sin `sort` las
+  pendientes van primero y luego por `id DESC`.
 
 Los errores de validación devuelven `400 { errors: [...] }` y los recursos
 inexistentes `404 { error }`.

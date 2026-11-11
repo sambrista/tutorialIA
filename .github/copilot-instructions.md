@@ -53,7 +53,10 @@ node --test --test-name-pattern="alterna" "tests/**/*.test.js"   # tests por nom
   `CREATE TABLE`, `toTask()` y los `prepare()`. No hay migraciones.
 - `store.update(id, changes)` fusiona cambios parciales; lo usan `PUT /:id` y
   `PATCH /:id/toggle`.
-- La lista se ordena con pendientes primero y luego `id DESC`; los tests dependen de ello.
+- Sin `sort`, la lista se ordena con pendientes primero y luego `id DESC`; los tests dependen
+  de ello. `store.list({ status, q, sort })` filtra por estado, busca en título y descripción
+  y ordena por fecha de creación; `validateQuery()` en `src/routes/tasks.js` valida los
+  parámetros (400 si son inválidos). El frontend los envía a la API en cada `load()`.
 - La validación está en `validate(body, { partial })` de `src/routes/tasks.js`. Los
   límites (título 200, descripción 2000) se repiten en los `maxlength` de
   `public/index.html` y `public/app.js`: mantenlos sincronizados.

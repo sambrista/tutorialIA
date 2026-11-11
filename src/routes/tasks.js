@@ -49,6 +49,31 @@ function validate(body, { partial = false } = {}) {
   return { errors, data };
 }
 
+const STATUSES = ['all', 'pending', 'completed'];
+const SORTS = ['created_desc', 'created_asc'];
+
+/** Valida los parámetros de consulta de GET /. Devuelve { errors, options }. */
+function validateQuery(query) {
+  const errors = [];
+  const options = {};
+  const { status, q, sort } = query;
+
+  if (status !== undefined) {
+    if (!STATUSES.includes(status)) errors.push(`status debe ser uno de: ${STATUSES.join(', ')}.`);
+    else options.status = status;
+  }
+  if (q !== undefined) {
+    if (typeof q !== 'string') errors.push('q debe ser texto.');
+    else if (q.trim().length > MAX_TITLE) errors.push(`q no puede superar ${MAX_TITLE} caracteres.`);
+    else options.q = q.trim();
+  }
+  if (sort !== undefined) {
+    if (!SORTS.includes(sort)) errors.push(`sort debe ser uno de: ${SORTS.join(', ')}.`);
+    else options.sort = sort;
+  }
+  return { errors, options };
+}
+
 function createTasksRouter(store) {
   const router = express.Router();
 
@@ -63,7 +88,9 @@ function createTasksRouter(store) {
   });
 
   router.get('/', (req, res) => {
-    res.json(store.list());
+    const { errors, options } = validateQuery(req.query);
+    if (errors.length) return res.status(400).json({ errors });
+    res.json(store.list(options));
   });
 
   router.get('/:id', (req, res) => {

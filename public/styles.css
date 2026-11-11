@@ -77,6 +77,15 @@ button.danger { border-color: var(--danger); color: var(--danger); }
   color: var(--muted);
 }
 
+input[type="search"], select {
+  font: inherit;
+  padding: .5rem .6rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+}
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.controls input { flex: 1; min-width: 12rem; }
+
 .filters { display: flex; gap: .25rem; }
 
 .task-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }

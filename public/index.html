@@ -18,6 +18,15 @@
 
     <p id="error" class="error" role="alert" hidden></p>
 
+    <div class="controls">
+      <input id="search" type="search" placeholder="Buscar por título o descripción" maxlength="200" aria-label="Buscar tareas">
+      <select id="sort" aria-label="Ordenar por fecha de creación">
+        <option value="">Orden por defecto</option>
+        <option value="created_desc">Más recientes primero</option>
+        <option value="created_asc">Más antiguas primero</option>
+      </select>
+    </div>
+
     <div class="toolbar">
       <span id="counter"></span>
       <div class="filters" role="group" aria-label="Filtrar tareas">

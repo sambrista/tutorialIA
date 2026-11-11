@@ -25,6 +25,9 @@ function createTaskStore(filename = ':memory:') {
     )
   `);
 
+  // LIKE de SQLite solo ignora mayúsculas en ASCII: se pliega a minúsculas Unicode.
+  db.function('fold', { deterministic: true }, (text) => String(text).toLowerCase());
+
   const toTask = (row) =>
     row && {
       id: row.id,
@@ -36,7 +39,6 @@ function createTaskStore(filename = ':memory:') {
     };
 
   const stmts = {
-    all: db.prepare('SELECT * FROM tasks ORDER BY completed ASC, id DESC'),
     get: db.prepare('SELECT * FROM tasks WHERE id = ?'),
     insert: db.prepare(
       'INSERT INTO tasks (title, description, completed, created_at, updated_at) VALUES (?, ?, 0, ?, ?)'
@@ -47,9 +49,31 @@ function createTaskStore(filename = ':memory:') {
     remove: db.prepare('DELETE FROM tasks WHERE id = ?'),
   };
 
+  const ORDERS = {
+    default: 'completed ASC, id DESC',
+    created_desc: 'created_at DESC, id DESC',
+    created_asc: 'created_at ASC, id ASC',
+  };
+  const escapeLike = (text) => text.replace(/[\\%_]/g, '\\$&');
+
   return {
-    list() {
-      return stmts.all.all().map(toTask);
+    /**
+     * Lista tareas. Sin opciones: pendientes primero y luego `id DESC`.
+     * @param {{status?: 'all'|'pending'|'completed', q?: string, sort?: 'created_desc'|'created_asc'}} opts
+     */
+    list({ status = 'all', q = '', sort = 'default' } = {}) {
+      const where = [];
+      const params = [];
+      if (status === 'pending') where.push('completed = 0');
+      if (status === 'completed') where.push('completed = 1');
+      if (q) {
+        where.push("(fold(title) LIKE ? ESCAPE '\\' OR fold(description) LIKE ? ESCAPE '\\')");
+        const like = `%${escapeLike(q.toLowerCase())}%`;
+        params.push(like, like);
+      }
+      const order = ORDERS[sort] || ORDERS.default;
+      const sql = `SELECT * FROM tasks${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${order}`;
+      return db.prepare(sql).all(...params).map(toTask);
     },
 
     get(id) {
