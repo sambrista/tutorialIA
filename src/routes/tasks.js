@@ -1,0 +1,105 @@
+'use strict';
+
+const express = require('express');
+
+const MAX_TITLE = 200;
+const MAX_DESCRIPTION = 2000;
+
+/**
+ * Valida el cuerpo de una petición. Con `partial` los campos son opcionales.
+ * Devuelve { errors, data } con los campos normalizados.
+ */
+function validate(body, { partial = false } = {}) {
+  const errors = [];
+  const data = {};
+  body = body && typeof body === 'object' ? body : {};
+
+  if (body.title !== undefined || !partial) {
+    if (typeof body.title !== 'string' || body.title.trim() === '') {
+      errors.push('El título es obligatorio.');
+    } else if (body.title.trim().length > MAX_TITLE) {
+      errors.push(`El título no puede superar ${MAX_TITLE} caracteres.`);
+    } else {
+      data.title = body.title.trim();
+    }
+  }
+
+  if (body.description !== undefined) {
+    if (typeof body.description !== 'string') {
+      errors.push('La descripción debe ser texto.');
+    } else if (body.description.length > MAX_DESCRIPTION) {
+      errors.push(`La descripción no puede superar ${MAX_DESCRIPTION} caracteres.`);
+    } else {
+      data.description = body.description.trim();
+    }
+  }
+
+  if (body.completed !== undefined) {
+    if (typeof body.completed !== 'boolean') {
+      errors.push('El campo completed debe ser booleano.');
+    } else {
+      data.completed = body.completed;
+    }
+  }
+
+  if (partial && errors.length === 0 && Object.keys(data).length === 0) {
+    errors.push('No se ha indicado ningún campo a modificar.');
+  }
+
+  return { errors, data };
+}
+
+function createTasksRouter(store) {
+  const router = express.Router();
+
+  // Convierte :id en número y responde 404 si no es válido.
+  router.param('id', (req, res, next, raw) => {
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada.' });
+    }
+    req.taskId = id;
+    next();
+  });
+
+  router.get('/', (req, res) => {
+    res.json(store.list());
+  });
+
+  router.get('/:id', (req, res) => {
+    const task = store.get(req.taskId);
+    if (!task) return res.status(404).json({ error: 'Tarea no encontrada.' });
+    res.json(task);
+  });
+
+  router.post('/', (req, res) => {
+    const { errors, data } = validate(req.body);
+    if (errors.length) return res.status(400).json({ errors });
+    res.status(201).json(store.create(data));
+  });
+
+  router.put('/:id', (req, res) => {
+    const { errors, data } = validate(req.body, { partial: true });
+    if (errors.length) return res.status(400).json({ errors });
+    const task = store.update(req.taskId, data);
+    if (!task) return res.status(404).json({ error: 'Tarea no encontrada.' });
+    res.json(task);
+  });
+
+  router.patch('/:id/toggle', (req, res) => {
+    const current = store.get(req.taskId);
+    if (!current) return res.status(404).json({ error: 'Tarea no encontrada.' });
+    res.json(store.update(req.taskId, { completed: !current.completed }));
+  });
+
+  router.delete('/:id', (req, res) => {
+    if (!store.remove(req.taskId)) {
+      return res.status(404).json({ error: 'Tarea no encontrada.' });
+    }
+    res.status(204).end();
+  });
+
+  return router;
+}
+
+module.exports = { createTasksRouter, validate };
