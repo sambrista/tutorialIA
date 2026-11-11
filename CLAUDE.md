@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> `.github/copilot-instructions.md` refleja este fichero. Si cambias uno, actualiza también el otro.
+
 # Instrucciones del proyecto
 
 ## Rol
