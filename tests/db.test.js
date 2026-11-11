@@ -18,6 +18,48 @@ describe('createTaskStore', () => {
     store.close();
   });
 
+  describe('list con filtros', () => {
+    beforeEach(() => {
+      store.create({ title: 'Comprar pan', description: 'Panadería' });
+      store.create({ title: 'Estudiar Node', description: 'Capítulo 100%' });
+      store.create({ title: 'Llamar al banco', description: 'sobre el pan_' });
+      store.update(1, { completed: true });
+    });
+
+    const titles = (opts) => store.list(opts).map((t) => t.title);
+
+    test('sin opciones mantiene el orden por defecto', () => {
+      assert.deepEqual(titles(), ['Llamar al banco', 'Estudiar Node', 'Comprar pan']);
+    });
+
+    test('filtra por estado', () => {
+      assert.deepEqual(titles({ status: 'completed' }), ['Comprar pan']);
+      assert.deepEqual(titles({ status: 'pending' }), ['Llamar al banco', 'Estudiar Node']);
+      assert.equal(titles({ status: 'all' }).length, 3);
+    });
+
+    test('busca en título y descripción sin distinguir mayúsculas', () => {
+      assert.deepEqual(titles({ q: 'PAN' }), ['Llamar al banco', 'Comprar pan']);
+      assert.deepEqual(titles({ q: 'node' }), ['Estudiar Node']);
+      assert.deepEqual(titles({ q: 'inexistente' }), []);
+    });
+
+    test('escapa los comodines % y _ de la búsqueda', () => {
+      assert.deepEqual(titles({ q: '100%' }), ['Estudiar Node']);
+      assert.deepEqual(titles({ q: 'pan_' }), ['Llamar al banco']);
+      assert.deepEqual(titles({ q: '%' }), ['Estudiar Node']);
+    });
+
+    test('ordena por fecha de creación sin agrupar por estado', () => {
+      assert.deepEqual(titles({ sort: 'created_asc' }), ['Comprar pan', 'Estudiar Node', 'Llamar al banco']);
+      assert.deepEqual(titles({ sort: 'created_desc' }), ['Llamar al banco', 'Estudiar Node', 'Comprar pan']);
+    });
+
+    test('combina estado, búsqueda y orden', () => {
+      assert.deepEqual(titles({ status: 'pending', q: 'pan', sort: 'created_asc' }), ['Llamar al banco']);
+    });
+  });
+
   test('empieza sin tareas', () => {
     assert.deepEqual(store.list(), []);
   });

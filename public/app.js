@@ -8,10 +8,15 @@ const template = document.getElementById('task-template');
 const errorBox = document.getElementById('error');
 const emptyMsg = document.getElementById('empty');
 const counter = document.getElementById('counter');
+const searchInput = document.getElementById('search');
+const sortSelect = document.getElementById('sort');
 const filterButtons = document.querySelectorAll('[data-filter]');
 
 let tasks = [];
 let filter = 'all';
+let search = '';
+let sort = '';
+let searchTimer;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -41,20 +46,23 @@ async function run(action) {
 }
 
 async function load() {
-  tasks = await request(API);
+  const params = new URLSearchParams({ status: filter });
+  if (search.trim()) params.set('q', search.trim());
+  if (sort) params.set('sort', sort);
+  tasks = await request(`${API}?${params}`);
   render();
 }
 
 function render() {
-  const visible = tasks.filter((t) =>
-    filter === 'all' ? true : filter === 'completed' ? t.completed : !t.completed
-  );
-
-  list.replaceChildren(...visible.map(renderTask));
-  emptyMsg.hidden = visible.length > 0;
+  // El servidor ya aplica filtro, búsqueda y orden.
+  list.replaceChildren(...tasks.map(renderTask));
+  emptyMsg.hidden = tasks.length > 0;
 
   const pending = tasks.filter((t) => !t.completed).length;
-  counter.textContent = `${pending} pendiente(s) de ${tasks.length}`;
+  counter.textContent =
+    filter === 'all' && !search.trim()
+      ? `${pending} pendiente(s) de ${tasks.length}`
+      : `${tasks.length} resultado(s)`;
 }
 
 function renderTask(task) {
@@ -152,8 +160,21 @@ filterButtons.forEach((btn) =>
   btn.addEventListener('click', () => {
     filter = btn.dataset.filter;
     filterButtons.forEach((b) => b.classList.toggle('active', b === btn));
-    render();
+    run(load);
   })
 );
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    search = searchInput.value;
+    run(load);
+  }, 250);
+});
+
+sortSelect.addEventListener('change', () => {
+  sort = sortSelect.value;
+  run(load);
+});
 
 run(load);
