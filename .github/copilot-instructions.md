@@ -50,16 +50,25 @@ node --test --test-name-pattern="alterna" "tests/**/*.test.js"   # tests por nom
   `':memory:'` por test y `supertest` sobre `createApp`, sin levantar el servidor.
 - La tabla usa `snake_case` y `completed` como 0/1; `toTask()` lo convierte a JSON
   `camelCase` con `completed` booleano. Una columna nueva requiere tocar el
-  `CREATE TABLE`, `toTask()` y los `prepare()`. No hay migraciones.
+  `CREATE TABLE`, `toTask()` y los `prepare()`. No hay migraciones, salvo la de
+  `due_date` (`TEXT` nullable, JSON `dueDate`: `'AAAA-MM-DD'` o `null`): tras el
+  `CREATE TABLE`, `db.js` consulta `PRAGMA table_info(tasks)` y ejecuta
+  `ALTER TABLE ... ADD COLUMN` si falta. En `POST`/`PUT`, `dueDate` ausente conserva
+  el valor y `null` lo borra.
 - `store.update(id, changes)` fusiona cambios parciales; lo usan `PUT /:id` y
   `PATCH /:id/toggle`.
 - Sin `sort`, la lista se ordena con pendientes primero y luego `id DESC`; los tests dependen
   de ello. `store.list({ status, q, sort })` filtra por estado, busca en título y descripción
-  y ordena por fecha de creación; `validateQuery()` en `src/routes/tasks.js` valida los
+  y ordena por fecha de creación o por fecha límite (`due_asc`: sin fecha al final,
+  luego pendientes primero); `validateQuery()` en `src/routes/tasks.js` valida los
   parámetros (400 si son inválidos). El frontend los envía a la API en cada `load()`.
 - La validación está en `validate(body, { partial })` de `src/routes/tasks.js`. Los
   límites (título 200, descripción 2000) se repiten en los `maxlength` de
   `public/index.html` y `public/app.js`: mantenlos sincronizados.
+  `dueDate`: `'AAAA-MM-DD'` y fecha real de calendario (sin trim); `""` es
+  inválido, `null` la borra y en `PUT` ausente la conserva.
 - Errores: 400 → `{ errors: [...] }`; 404/500 → `{ error }`.
 - Frontend: tras cada operación recarga la lista completa (`load()`). Accede a los
-  campos con `form.elements.<campo>`, no con `form.title`.
+  campos con `form.elements.<campo>`, no con `form.title`. Marca de vencida: compara
+  con la fecha local construida con componentes (`getFullYear/Month/Date`), no con
+  `toISOString()`; solo en tareas pendientes y con el texto "(vencida)" además del color.

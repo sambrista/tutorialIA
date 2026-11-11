@@ -13,6 +13,9 @@
     <form id="task-form" class="card" autocomplete="off">
       <input id="title" name="title" type="text" placeholder="¿Qué hay que hacer?" maxlength="200" required>
       <textarea id="description" name="description" placeholder="Descripción (opcional)" maxlength="2000" rows="2"></textarea>
+      <label class="due-field">Fecha límite (opcional)
+        <input id="dueDate" name="dueDate" type="date">
+      </label>
       <button type="submit">Añadir tarea</button>
     </form>
 
@@ -20,10 +23,11 @@
 
     <div class="controls">
       <input id="search" type="search" placeholder="Buscar por título o descripción" maxlength="200" aria-label="Buscar tareas">
-      <select id="sort" aria-label="Ordenar por fecha de creación">
+      <select id="sort" aria-label="Ordenar tareas">
         <option value="">Orden por defecto</option>
         <option value="created_desc">Más recientes primero</option>
         <option value="created_asc">Más antiguas primero</option>
+        <option value="due_asc">Fecha límite próxima primero</option>
       </select>
     </div>
 
@@ -46,6 +50,7 @@
       <div class="content">
         <span class="title"></span>
         <p class="description"></p>
+        <p class="due" hidden></p>
       </div>
       <div class="actions">
         <button type="button" class="edit">Editar</button>

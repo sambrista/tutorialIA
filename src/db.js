@@ -21,9 +21,16 @@ function createTaskStore(filename = ':memory:') {
       description TEXT    NOT NULL DEFAULT '',
       completed   INTEGER NOT NULL DEFAULT 0,
       created_at  TEXT    NOT NULL,
-      updated_at  TEXT    NOT NULL
+      updated_at  TEXT    NOT NULL,
+      due_date    TEXT
     )
   `);
+
+  // Migración idempotente para bases de datos creadas antes de due_date.
+  const columns = db.prepare('PRAGMA table_info(tasks)').all();
+  if (!columns.some((c) => c.name === 'due_date')) {
+    db.exec('ALTER TABLE tasks ADD COLUMN due_date TEXT');
+  }
 
   // LIKE de SQLite solo ignora mayúsculas en ASCII: se pliega a minúsculas Unicode.
   db.function('fold', { deterministic: true }, (text) => String(text).toLowerCase());
@@ -36,15 +43,16 @@ function createTaskStore(filename = ':memory:') {
       completed: row.completed === 1,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      dueDate: row.due_date ?? null,
     };
 
   const stmts = {
     get: db.prepare('SELECT * FROM tasks WHERE id = ?'),
     insert: db.prepare(
-      'INSERT INTO tasks (title, description, completed, created_at, updated_at) VALUES (?, ?, 0, ?, ?)'
+      'INSERT INTO tasks (title, description, completed, created_at, updated_at, due_date) VALUES (?, ?, 0, ?, ?, ?)'
     ),
     update: db.prepare(
-      'UPDATE tasks SET title = ?, description = ?, completed = ?, updated_at = ? WHERE id = ?'
+      'UPDATE tasks SET title = ?, description = ?, completed = ?, updated_at = ?, due_date = ? WHERE id = ?'
     ),
     remove: db.prepare('DELETE FROM tasks WHERE id = ?'),
   };
@@ -53,13 +61,15 @@ function createTaskStore(filename = ':memory:') {
     default: 'completed ASC, id DESC',
     created_desc: 'created_at DESC, id DESC',
     created_asc: 'created_at ASC, id ASC',
+    due_asc: 'due_date IS NULL, due_date ASC, completed ASC, id DESC',
   };
   const escapeLike = (text) => text.replace(/[\\%_]/g, '\\$&');
 
   return {
     /**
      * Lista tareas. Sin opciones: pendientes primero y luego `id DESC`.
-     * @param {{status?: 'all'|'pending'|'completed', q?: string, sort?: 'created_desc'|'created_asc'}} opts
+     * @param {{status?: 'all'|'pending'|'completed', q?: string, sort?: 'created_desc'|'created_asc'|'due_asc'}} opts
+     *   `due_asc`: por fecha límite ascendente, tareas sin fecha al final.
      */
     list({ status = 'all', q = '', sort = 'default' } = {}) {
       const where = [];
@@ -71,7 +81,7 @@ function createTaskStore(filename = ':memory:') {
         const like = `%${escapeLike(q.toLowerCase())}%`;
         params.push(like, like);
       }
-      const order = ORDERS[sort] || ORDERS.default;
+      const order = Object.hasOwn(ORDERS, sort) ? ORDERS[sort] : ORDERS.default;
       const sql = `SELECT * FROM tasks${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${order}`;
       return db.prepare(sql).all(...params).map(toTask);
     },
@@ -80,21 +90,25 @@ function createTaskStore(filename = ':memory:') {
       return toTask(stmts.get.get(id));
     },
 
-    create({ title, description = '' }) {
+    create({ title, description = '', dueDate = null }) {
       const now = new Date().toISOString();
-      const { lastInsertRowid } = stmts.insert.run(title, description, now, now);
+      const { lastInsertRowid } = stmts.insert.run(title, description, now, now, dueDate ?? null);
       return this.get(Number(lastInsertRowid));
     },
 
     update(id, changes) {
       const current = this.get(id);
       if (!current) return undefined;
-      const next = { ...current, ...changes };
+      const defined = Object.fromEntries(
+        Object.entries(changes).filter(([, v]) => v !== undefined)
+      );
+      const next = { ...current, ...defined };
       stmts.update.run(
         next.title,
         next.description,
         next.completed ? 1 : 0,
         new Date().toISOString(),
+        next.dueDate ?? null,
         id
       );
       return this.get(id);

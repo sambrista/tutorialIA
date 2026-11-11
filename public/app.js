@@ -72,12 +72,36 @@ function render() {
       : `${tasks.length} resultado(s)`;
 }
 
+function todayLocal() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function formatDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  // new Date(y, ...) trata los años 0-99 como 1900-1999; setFullYear usa el año real.
+  const date = new Date(2000, 0, 1);
+  date.setFullYear(y, m - 1, d);
+  return date.toLocaleDateString('es-ES');
+}
+
 function renderTask(task) {
   const li = template.content.firstElementChild.cloneNode(true);
   li.dataset.id = task.id;
   li.classList.toggle('completed', task.completed);
   li.querySelector('.title').textContent = task.title;
   li.querySelector('.description').textContent = task.description;
+
+  const due = li.querySelector('.due');
+  if (task.dueDate) {
+    const overdue = !task.completed && task.dueDate < todayLocal();
+    due.textContent = `Vence: ${formatDate(task.dueDate)}${overdue ? ' (vencida)' : ''}`;
+    due.hidden = false;
+    li.classList.toggle('overdue', overdue);
+  } else {
+    due.hidden = true;
+  }
 
   const toggle = li.querySelector('.toggle');
   toggle.checked = task.completed;
@@ -120,12 +144,16 @@ function startEdit(li, task) {
   editForm.innerHTML = `
     <input type="text" name="title" maxlength="200" required>
     <textarea name="description" maxlength="2000" rows="2"></textarea>
+    <label class="due-field">Fecha límite (opcional)
+      <input type="date" name="dueDate">
+    </label>
     <div class="actions">
       <button type="submit">Guardar</button>
       <button type="button" class="secondary cancel">Cancelar</button>
     </div>`;
   editForm.elements.title.value = task.title;
   editForm.elements.description.value = task.description;
+  editForm.elements.dueDate.value = task.dueDate || '';
 
   editForm.querySelector('.cancel').addEventListener('click', render);
   editForm.addEventListener('submit', (e) => {
@@ -136,6 +164,7 @@ function startEdit(li, task) {
         body: JSON.stringify({
           title: editForm.elements.title.value,
           description: editForm.elements.description.value,
+          dueDate: editForm.elements.dueDate.value || null,
         }),
       });
       await load();
@@ -155,6 +184,7 @@ form.addEventListener('submit', (e) => {
       body: JSON.stringify({
         title: form.elements.title.value,
         description: form.elements.description.value,
+        dueDate: form.elements.dueDate.value || null,
       }),
     });
     form.reset();

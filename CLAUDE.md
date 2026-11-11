@@ -63,21 +63,31 @@ node --test --test-name-pattern="alterna" "tests/**/*.test.js"   # tests por nom
 - **Modelo de datos:** la tabla usa `snake_case` y `completed` como 0/1; `toTask()`
   en `db.js` lo convierte a JSON `camelCase` con `completed` booleano. Cualquier
   columna nueva debe añadirse en el `CREATE TABLE`, en `toTask()` y en los
-  `prepare()`. No hay sistema de migraciones (`CREATE TABLE IF NOT EXISTS`).
+  `prepare()`. No hay sistema de migraciones (`CREATE TABLE IF NOT EXISTS`), salvo
+  la de `due_date` (columna `TEXT` nullable, JSON `dueDate`: `'AAAA-MM-DD'` o `null`):
+  tras el `CREATE TABLE`, `db.js` consulta `PRAGMA table_info(tasks)` y ejecuta
+  `ALTER TABLE ... ADD COLUMN` si falta, para bases de datos existentes. En
+  `POST`/`PUT`, `dueDate` ausente conserva el valor y `null` lo borra.
 - **`store.update(id, changes)`** fusiona cambios parciales sobre la tarea actual;
   lo usan tanto `PUT /:id` como `PATCH /:id/toggle`.
 - **Orden de la lista:** sin `sort`, pendientes primero y luego por `id DESC`; los
   tests dependen de este orden. `store.list({ status, q, sort })` aplica filtro
   por estado, búsqueda (título y descripción, `LIKE` con comodines escapados) y
-  orden por fecha (`created_asc`/`created_desc`, sin agrupar por estado). La ruta
+  orden por fecha (`created_asc`/`created_desc`, sin agrupar por estado) o por
+  fecha límite (`due_asc`: sin fecha al final, luego pendientes primero). La ruta
   valida estos parámetros en `validateQuery()` (400 si son inválidos).
 - **Validación:** `validate(body, { partial })` en `src/routes/tasks.js` (modo
   `partial` para `PUT`). Recorta espacios y aplica límites de 200 (título) y
   2000 (descripción) caracteres, replicados en los `maxlength` de
   `public/index.html` y `public/app.js`: si cambias uno, cambia ambos.
+  `dueDate`: `'AAAA-MM-DD'` y fecha real de calendario (sin trim); `""` es
+  inválido, `null` la borra y en `PUT` ausente la conserva.
 - **Formato de errores:** 400 → `{ errors: [...] }`; 404/500 → `{ error }`. El
   helper `request()` de `public/app.js` entiende ambas formas.
 - **Frontend:** tras cada operación recarga la lista completa (`load()`) y
   vuelve a renderizar; el estado local (`tasks`, `filter`, `search`, `sort`) solo se usa para pintar y
   se envía como parámetros a la API (el filtrado lo hace el servidor).
   Usa `form.elements.<campo>` (no `form.title`, que choca con la propiedad nativa).
+  Marca de vencida: compara con la fecha local construida con componentes
+  (`getFullYear/Month/Date`), no con `toISOString()`; solo en tareas pendientes y
+  con el texto "(vencida)" además del color.
