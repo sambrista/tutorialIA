@@ -1,0 +1,21 @@
+{
+  "name": "task-manager",
+  "version": "1.0.0",
+  "description": "Pequeña aplicación web de gestión de tareas",
+  "main": "src/server.js",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.22.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.2"
+  }
+}
