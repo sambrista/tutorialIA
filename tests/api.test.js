@@ -168,6 +168,12 @@ describe('API /api/tasks', () => {
       assert.deepEqual(titles(await get('?q=%25')), []);
     });
 
+    test('busca sin distinguir mayúsculas con acentos', async () => {
+      await create({ title: 'Árbol Ñandú' });
+      assert.deepEqual(titles(await get('?q=%C3%A1rbol')), ['Árbol Ñandú']);
+      assert.deepEqual(titles(await get('?q=%C3%B1and%C3%BA')), ['Árbol Ñandú']);
+    });
+
     test('ordena por fecha de creación', async () => {
       assert.deepEqual(titles(await get('?sort=created_asc')), ['Comprar pan', 'Estudiar Node', 'Llamar al banco']);
       assert.deepEqual(titles(await get('?sort=created_desc')), ['Llamar al banco', 'Estudiar Node', 'Comprar pan']);

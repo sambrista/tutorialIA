@@ -45,17 +45,24 @@ async function run(action) {
   }
 }
 
+let loadSeq = 0;
+
 async function load() {
+  const seq = ++loadSeq;
   const params = new URLSearchParams({ status: filter });
   if (search.trim()) params.set('q', search.trim());
   if (sort) params.set('sort', sort);
-  tasks = await request(`${API}?${params}`);
+  const result = await request(`${API}?${params}`);
+  if (seq !== loadSeq) return; // respuesta obsoleta: ya hay una consulta más reciente
+  tasks = result;
   render();
 }
 
 function render() {
   // El servidor ya aplica filtro, búsqueda y orden.
   list.replaceChildren(...tasks.map(renderTask));
+  const filtered = filter !== 'all' || search.trim() !== '';
+  emptyMsg.textContent = filtered ? 'Ninguna tarea coincide con el filtro o la búsqueda.' : 'No hay tareas.';
   emptyMsg.hidden = tasks.length > 0;
 
   const pending = tasks.filter((t) => !t.completed).length;

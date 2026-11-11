@@ -44,6 +44,12 @@ describe('createTaskStore', () => {
       assert.deepEqual(titles({ q: 'inexistente' }), []);
     });
 
+    test('ignora mayúsculas también en caracteres no ASCII', () => {
+      store.create({ title: 'Árbol Ñandú' });
+      assert.deepEqual(titles({ q: 'árbol' }), ['Árbol Ñandú']);
+      assert.deepEqual(titles({ q: 'ÑANDÚ' }), ['Árbol Ñandú']);
+    });
+
     test('escapa los comodines % y _ de la búsqueda', () => {
       assert.deepEqual(titles({ q: '100%' }), ['Estudiar Node']);
       assert.deepEqual(titles({ q: 'pan_' }), ['Llamar al banco']);

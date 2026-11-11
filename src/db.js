@@ -25,6 +25,9 @@ function createTaskStore(filename = ':memory:') {
     )
   `);
 
+  // LIKE de SQLite solo ignora mayúsculas en ASCII: se pliega a minúsculas Unicode.
+  db.function('fold', { deterministic: true }, (text) => String(text).toLowerCase());
+
   const toTask = (row) =>
     row && {
       id: row.id,
@@ -64,8 +67,8 @@ function createTaskStore(filename = ':memory:') {
       if (status === 'pending') where.push('completed = 0');
       if (status === 'completed') where.push('completed = 1');
       if (q) {
-        where.push("(title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')");
-        const like = `%${escapeLike(q)}%`;
+        where.push("(fold(title) LIKE ? ESCAPE '\\' OR fold(description) LIKE ? ESCAPE '\\')");
+        const like = `%${escapeLike(q.toLowerCase())}%`;
         params.push(like, like);
       }
       const order = ORDERS[sort] || ORDERS.default;
