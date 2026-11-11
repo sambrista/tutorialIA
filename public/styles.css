@@ -1,0 +1,103 @@
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #1f2933;
+  --muted: #6b7785;
+  --accent: #2f6fde;
+  --danger: #d64545;
+  --border: #dde1e6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+h1 { margin-top: 0; }
+
+.card, .task {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#task-form, .edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+#task-form { padding: 1rem; }
+
+input[type="text"], textarea {
+  font: inherit;
+  padding: .5rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 100%;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  padding: .4rem .8rem;
+}
+
+button.secondary, .filters button, .actions button {
+  background: transparent;
+  color: var(--accent);
+}
+
+button.danger { border-color: var(--danger); color: var(--danger); }
+.filters button.active { background: var(--accent); color: #fff; }
+
+.error { color: var(--danger); }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1rem 0;
+  color: var(--muted);
+}
+
+.filters { display: flex; gap: .25rem; }
+
+.task-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+
+.task {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+  padding: .75rem;
+}
+
+.task .toggle { margin-top: .3rem; width: 1.1rem; height: 1.1rem; }
+.task .content { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.task .description { margin: .25rem 0 0; color: var(--muted); white-space: pre-wrap; }
+.task .description:empty { display: none; }
+.task.completed .title { text-decoration: line-through; color: var(--muted); }
+.task .actions { display: flex; gap: .25rem; flex-shrink: 0; }
+
+.empty { text-align: center; color: var(--muted); }
+
+@media (max-width: 480px) {
+  .task { flex-wrap: wrap; }
+  .task .actions { width: 100%; justify-content: flex-end; }
+}

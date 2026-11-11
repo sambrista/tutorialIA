@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestor de tareas</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Gestor de tareas</h1>
+
+    <form id="task-form" class="card" autocomplete="off">
+      <input id="title" name="title" type="text" placeholder="¿Qué hay que hacer?" maxlength="200" required>
+      <textarea id="description" name="description" placeholder="Descripción (opcional)" maxlength="2000" rows="2"></textarea>
+      <button type="submit">Añadir tarea</button>
+    </form>
+
+    <p id="error" class="error" role="alert" hidden></p>
+
+    <div class="toolbar">
+      <span id="counter"></span>
+      <div class="filters" role="group" aria-label="Filtrar tareas">
+        <button type="button" data-filter="all" class="active">Todas</button>
+        <button type="button" data-filter="pending">Pendientes</button>
+        <button type="button" data-filter="completed">Completadas</button>
+      </div>
+    </div>
+
+    <ul id="task-list" class="task-list"></ul>
+    <p id="empty" class="empty" hidden>No hay tareas.</p>
+  </main>
+
+  <template id="task-template">
+    <li class="task">
+      <input type="checkbox" class="toggle" aria-label="Marcar como completada">
+      <div class="content">
+        <span class="title"></span>
+        <p class="description"></p>
+      </div>
+      <div class="actions">
+        <button type="button" class="edit">Editar</button>
+        <button type="button" class="delete danger">Eliminar</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
